@@ -1,0 +1,14 @@
+int_field = 42
+float_field = 3.14
+str_field = "example"
+bool_field = true
+list_field = [1, 2, 3]
+set_field = ["a", "b", "c"]
+tuple_field = [7, "seven"]
+
+[dict_field]
+key1 = 1
+key2 = 2
+
+[sub_class]
+sub_field = "sub_value"

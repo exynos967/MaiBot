@@ -43,9 +43,12 @@ class ConfigBase:
             field_type = f.type
 
             try:
-                init_args[field_name] = cls._convert_field(value, field_type)  # type: ignore
+                assert not isinstance(field_type, str)
+                init_args[field_name] = cls._convert_field(value, field_type)
             except TypeError as e:
                 raise TypeError(f"Field '{field_name}' has a type error: {e}") from e
+            except AssertionError:
+                raise TypeError(f"Field '{field_name}' has an unsupported type: {field_type}") from None
             except Exception as e:
                 raise RuntimeError(f"Failed to convert field '{field_name}' to target type: {e}") from e
 
@@ -75,7 +78,7 @@ class ConfigBase:
         if field_origin_type in {list, set, tuple}:
             # 检查提供的value是否为list
             if not isinstance(value, list):
-                raise TypeError(f"Expected an list for {field_type.__name__}, got {type(value).__name__}")
+                raise TypeError(f"Expected a list for {field_type.__name__}, got {type(value).__name__}")
 
             if field_origin_type is list:
                 # 如果列表元素类型是ConfigBase的子类，则对每个元素调用from_dict
@@ -94,7 +97,7 @@ class ConfigBase:
                     raise TypeError(
                         f"Expected {len(field_type_args)} items for {field_type.__name__}, got {len(value)}"
                     )
-                return tuple(cls._convert_field(item, arg) for item, arg in zip(value, field_type_args, strict=False))
+                return tuple(cls._convert_field(item, arg) for item, arg in zip(value, field_type_args, strict=True))
 
         if field_origin_type is dict:
             # 检查提供的value是否为dict
@@ -108,9 +111,19 @@ class ConfigBase:
 
             return {cls._convert_field(k, key_type): cls._convert_field(v, value_type) for k, v in value.items()}
 
-        # 处理基础类型，例如 int, str 等
-        if field_origin_type is type(None) and value is None:  # 处理Optional类型
+        # 处理Optional类型
+        if field_origin_type is type(None) and value is None:
             return None
+
+        # 处理基础类型，例如 int, str 等
+        if field_type is bool and isinstance(value, str):
+            lowered = value.lower()
+            if lowered in {"true", "1"}:
+                return True
+            elif lowered in {"false", "0"}:
+                return False
+            else:
+                raise TypeError(f"Cannot convert string '{value}' to bool")
 
         # 处理Literal类型
         if field_origin_type is Literal or get_origin(field_type) is Literal:
@@ -129,7 +142,3 @@ class ConfigBase:
             return field_type(value)
         except (ValueError, TypeError) as e:
             raise TypeError(f"Cannot convert {type(value).__name__} to {field_type.__name__}") from e
-
-    def __str__(self):
-        """返回配置类的字符串表示"""
-        return f"{self.__class__.__name__}({', '.join(f'{f.name}={getattr(self, f.name)}' for f in fields(self))})"

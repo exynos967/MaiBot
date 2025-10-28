@@ -7,6 +7,8 @@ Version 0.1.9 - 2025-10-19
 - [ ] 使用 python 方法作为配置项说明（提案）
     - [ ] 取消`bot_config_template.toml`
     - [ ] 取消`model_config_template.toml`
+- [x] 配置类中的所有原子项目应该只包含以下类型: `str`, `int`, `float`, `bool`, `list`, `dict`, `set`, `tuple`
+    - [x] 复杂类型使用嵌套配置类实现
 ### 移除template的方案提案
 - [ ] 方案一
 ```python
@@ -479,6 +481,8 @@ SYSTEM_CONSTANTS = SystemConstants()
 
 # PYTEST设计
 设计一个pytest测试系统，在代码完成后运行pytest进行测试
+
+所有的测试代码均在`pytests`目录下
 
 ---
 
