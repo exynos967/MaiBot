@@ -174,7 +174,9 @@ class AttrDocConfigBase:
                 for i in range(len(class_body)):
                     body_item = class_body[i]
                     if isinstance(body_item, ast.FunctionDef) and body_item.name != "__post_init__":
-                        raise AttributeError(f"Methods are not allowed in AttrDocConfigBase subclasses except __post_init__, found {str(body_item.name)}") from None
+                        raise AttributeError(
+                            f"Methods are not allowed in AttrDocConfigBase subclasses except __post_init__, found {str(body_item.name)}"
+                        ) from None
                     if (
                         i + 1 < len(class_body)
                         and isinstance(body_item, ast.AnnAssign)
@@ -187,7 +189,13 @@ class AttrDocConfigBase:
                             and isinstance(expr_item.value.value, str)
                         ):
                             doc_string = expr_item.value.value.strip()
-                            processed_doc_lines = [line.strip() for line in doc_string.splitlines() if line.strip()]
+                            processed_doc_lines = [line.strip() for line in doc_string.splitlines()]
+                            while processed_doc_lines and not processed_doc_lines[0]:
+                                # 去除头部空行
+                                processed_doc_lines.pop(0)
+                            while processed_doc_lines and not processed_doc_lines[-1]:
+                                # 去除尾部空行
+                                processed_doc_lines.pop()
                             doc_dict[body_item.target.id] = "\n".join(processed_doc_lines)
 
         return doc_dict

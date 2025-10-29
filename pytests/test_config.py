@@ -44,6 +44,7 @@ class ConfigExample(ConfigBase, AttrDocConfigBase):
     str_field: str
     """
     multi-line annotation
+
     The value is string type
     """
     bool_field: bool
@@ -71,7 +72,7 @@ class GoodConfig(ConfigBase, AttrDocConfigBase):
     value: int
 
     def __post_init__(self):  # 唯一允许的方法
-        pass
+        super().__post_init__()
 
 
 def assert_values(config: ConfigExample):
@@ -132,6 +133,7 @@ line2
 line3
 """
 
+
 @pytest.mark.parametrize(
     "config_data, expected_exception, expected_message",
     [
@@ -152,9 +154,11 @@ def test_multiple_exceptions(config_data, expected_exception, expected_message):
     # 确保异常消息包含预期内容
     assert expected_message in str(exc_info.value)
 
+
 def test_multiline_string():
     config = ConfigExample.from_dict(multiline_str_config_data)
     assert config.str_field == "\nline1\nline2\nline3\n", "wrong multiline str_field value"
+
 
 def test_doc_strings():
     config_data = {
@@ -173,7 +177,7 @@ def test_doc_strings():
     field_docs = config.field_docs
     assert field_docs["int_field"] == "The value is integer type"
     assert field_docs["float_field"] == "The value is float type"
-    assert field_docs["str_field"] == "multi-line annotation\nThe value is string type"
+    assert field_docs["str_field"] == "multi-line annotation\n\nThe value is string type"
     assert field_docs["bool_field"] == "The value is boolean type"
     field_docs_sub = config.sub_class.field_docs
     assert field_docs_sub["sub_field"] == "sub_field is a string field in SubClass"
