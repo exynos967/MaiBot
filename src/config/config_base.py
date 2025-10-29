@@ -150,7 +150,7 @@ class ConfigBase:
 @dataclass
 class AttrDocConfigBase:
     def __post_init__(self):
-        self.field_docs = self._get_field_docs() # 全局仅获取一次并保留
+        self.field_docs = self._get_field_docs()  # 全局仅获取一次并保留
 
     @classmethod
     def _get_field_docs(cls) -> dict[str, str]:
@@ -170,14 +170,17 @@ class AttrDocConfigBase:
 
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef) and node.name == cls.__name__:
-                for i in range(len(node.body)):
-                    body_item = node.body[i]
+                class_body = node.body
+                for i in range(len(class_body)):
+                    body_item = class_body[i]
+                    if isinstance(body_item, ast.FunctionDef) and body_item.name != "__post_init__":
+                        raise AttributeError(f"Methods are not allowed in AttrDocConfigBase subclasses except __post_init__, found {str(body_item.name)}") from None
                     if (
-                        i + 1 < len(node.body)
+                        i + 1 < len(class_body)
                         and isinstance(body_item, ast.AnnAssign)
                         and isinstance(body_item.target, ast.Name)
                     ):
-                        expr_item = node.body[i + 1]
+                        expr_item = class_body[i + 1]
                         if (
                             isinstance(expr_item, ast.Expr)
                             and isinstance(expr_item.value, ast.Constant)

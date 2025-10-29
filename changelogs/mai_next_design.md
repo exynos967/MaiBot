@@ -8,7 +8,7 @@ Version 0.1.9 - 2025-10-19
     - [ ] 取消`bot_config_template.toml`
     - [ ] 取消`model_config_template.toml`
 - [x] 配置类中的所有原子项目应该只包含以下类型: `str`, `int`, `float`, `bool`, `list`, `dict`, `set`, `tuple`
-    - [ ] 禁止使用 `Union` 类型（尚未支持解析）
+    - [ ] 暂时禁止使用 `Union` 类型（尚未支持解析）
     - [x] 复杂类型使用嵌套配置类实现
 ### 移除template的方案提案
 <details>
@@ -208,6 +208,9 @@ class FileWatcher:
         """防抖处理"""
         pass
 ```
+#### 配置文件写入
+- [ ] 将当前文件写入toml文件
+
 
 ## 消息部分设计
 解决原有的将消息类与数据库类存储不匹配的问题，现在存储所有消息类的所有属性
@@ -406,7 +409,9 @@ class SystemConstants:
 
 SYSTEM_CONSTANTS = SystemConstants()
 ```
-
+#### 配置文件API设计
+- [ ] 正确表达配置文件结构
+- [ ] 同时也能表达插件配置文件
 ---
 
 ## 表达方式模块设计

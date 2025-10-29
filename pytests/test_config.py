@@ -16,6 +16,18 @@ spec.loader.exec_module(module)  # type: ignore
 ConfigBase = module.ConfigBase
 AttrDocConfigBase = module.AttrDocConfigBase
 
+standard_config_data = {
+    "int_field": 42,
+    "float_field": 3.14,
+    "str_field": "example",
+    "bool_field": True,
+    "list_field": [1, 2, 3],
+    "set_field": ["a", "b", "c"],
+    "tuple_field": [7, "seven"],
+    "dict_field": {"key1": 1, "key2": 2},
+    "sub_class": {"sub_field": "sub_value"},
+}
+
 
 @dataclass
 class SubClass(ConfigBase, AttrDocConfigBase):
@@ -46,6 +58,22 @@ class ConfigExample(ConfigBase, AttrDocConfigBase):
     optional_field: Optional[str] = "default_value"
 
 
+@dataclass
+class ErrorConfig(ConfigBase, AttrDocConfigBase):
+    value: int
+
+    def a_method(self):  # 应该抛出异常
+        pass
+
+
+@dataclass
+class GoodConfig(ConfigBase, AttrDocConfigBase):
+    value: int
+
+    def __post_init__(self):  # 唯一允许的方法
+        pass
+
+
 def assert_values(config: ConfigExample):
     assert config.int_field == 42, "wrong int_field value"
     assert config.float_field == 3.14, "wrong float_field value"
@@ -72,19 +100,7 @@ def assert_values(config: ConfigExample):
 
 
 def test_config_base_from_dict():
-    config_data = {
-        "int_field": 42,
-        "float_field": 3.14,
-        "str_field": "example",
-        "bool_field": True,
-        "list_field": [1, 2, 3],
-        "set_field": ["a", "b", "c"],
-        "tuple_field": [7, "seven"],
-        "dict_field": {"key1": 1, "key2": 2},
-        "sub_class": {"sub_field": "sub_value"},
-    }
-
-    config = ConfigExample.from_dict(config_data)
+    config = ConfigExample.from_dict(standard_config_data)
     assert_values(config)
 
 
@@ -97,84 +113,34 @@ def test_config_base_from_file():
     assert_values(config)
 
 
+e_int_config_data = standard_config_data.copy()
+e_int_config_data["int_field"] = "40"  # 会被转换，应该报AssertionError
+e_list_config_data = standard_config_data.copy()
+e_list_config_data["list_field"] = []  # 列表为空，应该被覆盖并报AssertionError
+e_set_config_data = standard_config_data.copy()
+e_set_config_data["set_field"] = ("a", "b", "c")  # 错误类型
+e_subclass_config_data = standard_config_data.copy()
+e_subclass_config_data.pop("sub_class")  # 缺少关键字
+e_list_type_config_data = standard_config_data.copy()
+e_list_type_config_data["list_field"] = ["nan", 2, 3]  # 元素类型错误
+e_bool_config_data = standard_config_data.copy()
+e_bool_config_data["bool_field"] = "False"  # 会被转换，应该报AssertionError
+multiline_str_config_data = standard_config_data.copy()
+multiline_str_config_data["str_field"] = """
+line1
+line2
+line3
+"""
+
 @pytest.mark.parametrize(
     "config_data, expected_exception, expected_message",
     [
-        (
-            {
-                "int_field": "40",  # 会被转换，应该报AssertionError
-                "float_field": 3.14, 
-                "str_field": "111",
-                "bool_field": True,
-                "list_field": [1, 2, 3],
-                "set_field": ["a", "b", "c"],
-                "tuple_field": [7, "seven"],
-                "dict_field": {"key1": 1, "key2": 2},
-                "sub_class": {"sub_field": "sub_value"},
-            },
-            AssertionError,
-            "wrong int_field value",
-        ),
-        (
-            {
-                "int_field": 42,
-                "float_field": 3.14,
-                "str_field": "example",
-                "bool_field": True,
-                "list_field": [1, 2, 3],
-                "set_field": ("a", "b", "c"), # 错误类型
-                "tuple_field": [7, "seven"],
-                "dict_field": {"key1": 1, "key2": 2},
-                "sub_class": {"sub_field": "sub_value"},
-            },
-            TypeError,
-            "Expected a list for set",
-        ),
-        (
-            {
-                "int_field": 42,
-                "float_field": 3.14,
-                "str_field": "example",
-                "bool_field": True,
-                "list_field": [1, 2, 3],
-                "set_field": ["a", "b", "c"],
-                "tuple_field": [7, "seven"],
-                "dict_field": {"key1": 1, "key2": 2},
-                # 缺少关键字
-            },
-            ValueError,
-            "Missing required field: 'sub_class'",
-        ),
-        (
-            {
-                "int_field": 42,
-                "float_field": 3.14,
-                "str_field": "example",
-                "bool_field": True,
-                "list_field": ["nan", 2, 3], # 元素类型错误
-                "set_field": ["a", "b", "c"],
-                "tuple_field": [7, "seven"],
-                "dict_field": {"key1": 1, "key2": 2},
-                "sub_class": {"sub_field": "sub_value"},
-            },
-            TypeError,
-            "Cannot convert str to int",
-        ),
-        (
-            {
-                "int_field": 42,
-                "float_field": 3.14,
-                "str_field": "example",
-                "bool_field": "False", # 错误类型
-                "list_field": [1, 2, 3],
-                "set_field": ["a", "b", "c"],
-                "tuple_field": [7, "seven"],
-                "dict_field": {"key1": 1, "key2": 2},
-                "sub_class": {"sub_field": "sub_value"},
-            },
-            AssertionError,
-            "wrong bool_field value",
-        ),
+        (e_int_config_data, AssertionError, "wrong int_field value"),
+        (e_list_config_data, AssertionError, "wrong list_field value"),
+        (e_set_config_data, TypeError, "Expected a list for set"),
+        (e_subclass_config_data, ValueError, "Missing required field: 'sub_class'"),
+        (e_list_type_config_data, TypeError, "Cannot convert str to int"),
+        (e_bool_config_data, AssertionError, "wrong bool_field value"),
     ],
 )
 def test_multiple_exceptions(config_data, expected_exception, expected_message):
@@ -185,6 +151,10 @@ def test_multiple_exceptions(config_data, expected_exception, expected_message):
     assert exc_info.type == expected_exception
     # 确保异常消息包含预期内容
     assert expected_message in str(exc_info.value)
+
+def test_multiline_string():
+    config = ConfigExample.from_dict(multiline_str_config_data)
+    assert config.str_field == "\nline1\nline2\nline3\n", "wrong multiline str_field value"
 
 def test_doc_strings():
     config_data = {
@@ -198,7 +168,7 @@ def test_doc_strings():
         "dict_field": {"key1": 1, "key2": 2},
         "sub_class": {"sub_field": "sub_value"},
     }
-    
+
     config = ConfigExample.from_dict(config_data)
     field_docs = config.field_docs
     assert field_docs["int_field"] == "The value is integer type"
@@ -207,3 +177,27 @@ def test_doc_strings():
     assert field_docs["bool_field"] == "The value is boolean type"
     field_docs_sub = config.sub_class.field_docs
     assert field_docs_sub["sub_field"] == "sub_field is a string field in SubClass"
+
+
+@pytest.mark.parametrize(
+    "target_class, config_data, expected_exception, expected_message",
+    [
+        (
+            ErrorConfig,
+            {"value": 10},
+            AttributeError,
+            "Methods are not allowed in AttrDocConfigBase subclasses except __post_init__",
+        ),
+        (GoodConfig, {"value": 10}, None, ""),
+    ],
+)
+def test_method_exception(target_class, config_data, expected_exception, expected_message):
+    if expected_exception:
+        with pytest.raises(expected_exception) as exc_info:
+            _ = target_class.from_dict(config_data)
+        # 确保异常类型正确
+        assert exc_info.type == expected_exception
+        # 确保异常消息包含预期内容
+        assert expected_message in str(exc_info.value)
+    else:
+        target_class.from_dict(config_data)
